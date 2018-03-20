@@ -116,20 +116,22 @@ Exercicio 1) b)+c)*/
 DROP TABLE aluno CASCADE CONSTRAINTS PURGE;
 CREATE TABLE aluno(
     cod_usuario INTEGER NOT NULL,
-    RA SMALLINT NOT NULL,
+    RA INTEGER NOT NULL,
     dt_ingresso DATE NOT NULL,
     dt_prevista_termino DATE NOT NULL,
-    curso VARCHAR2(30) NOT NULL,
-    FOREIGN KEY (cod_usuario) REFERENCES usuario ON DELETE CASCADE,
-    PRIMARY KEY (cod_usuario)
+    curso CHAR(15) NOT NULL,
+    tipo_curso CHAR(20),
+   CONSTRAINT  PK_Aluno PRIMARY KEY (cod_usuario),
+CONSTRAINT UQ_aluno UNIQUE ( RA),
+CONSTRAINT Fk_aluno_usuario FOREIGN KEY (cod_usuario) REFERENCES Usuario (cod_usuario) ON DELETE CASCADE );
 );
 
 --Tabela Reserva
 DROP TABLE reserva CASCADE CONSTRAINTS PURGE;
 CREATE TABLE reserva(
-    cod_usuario INTEGER NOT NULL,
-    num_reserva INTEGER PRIMARY KEY,
-    dt_hora_reserva TIMESTAMP NOT NULL,
+    cod_usuario_prof INTEGER NOT NULL,
+    num_reserva SMALLINT PRIMARY KEY,
+    dt_reserva DATE NOT NULL,
     sit_reserva CHAR(15) NOT NULL CHECK(sit_reserva in ('ALUGADO', 'DISPONIVEL')),
     FOREIGN KEY (cod_usuario) REFERENCES professor (cod_usuario) ON DELETE CASCADE
 );
@@ -141,7 +143,8 @@ CREATE TABLE item_reserva(
     isbn NUMBER(13) NOT NULL,
     dt_validade_reserva DATE NOT NULL,
     FOREIGN KEY (num_reserva) REFERENCES reserva ON DELETE CASCADE,
-    FOREIGN KEY (isbn) REFERENCES obra ON DELETE CASCADE
+    FOREIGN KEY (isbn) REFERENCES obra ON DELETE CASCADE,
+    CONSTRAINT pk_reserva_obra PRIMARY KEY (num_reserva, isbn)
 );
 
 --Tabela Autor
@@ -166,32 +169,31 @@ CREATE TABLE autoria(
 --1) a)
 DROP SEQUENCE seq_reserva;
 CREATE SEQUENCE seq_reserva
-START WITH 800 INCREMENT BY 1
-MINVALUE 800;
+START WITH 800;
 
 
 --Exercicio 2)
 --a)
-ALTER TABLE obra ADD palavras_chave VARCHAR2(20) NOT NULL;
+ALTER TABLE obra ADD palavra_chave VARCHAR2(30) NOT NULL;
 
 --b)
 ALTER TABLE obra ADD CONSTRAINT chk_tipo_participacao CHECK(sit_obra IN ('PRINCIPAL', 'CO-AUTOR', 'REVISOR', 'TRADUTOR'));
-ALTER TABLE usuario ADD CONSTRAINT chk_tipo_curso CHECK(curso IN ('TECNOLOGIA', 'BACHARELADO', 'LICENCIATURA'));
+ALTER TABLE usuario ADD CONSTRAINT chk_tipo_curso CHECK(tipo_curso IN ('TECNOLOGIA', 'BACHARELADO', 'LICENCIATURA'));
 
 --c)
-ALTER TABLE exemplar RENAME COLUMN qtde_paginas TO numero_paginas;
+ALTER TABLE itens_emprestimo RENAME COLUMN sit_item TO situacao_item_emprestimo;
 
 --d)
-ALTER TABLE participacao_obra RENAME TO participantes_obra;
+ALTER TABLE autoria RENAME TO participantes_obra ;
+ALTER TABLE participantes_obra RENAME TO autoria ;
+SELECT table_name from user_tables where table_name like 'A%' ;
 
---e)
-ALTER TABLE usuario MODIFY rg VARCHAR2(10);
+--e) 
+ALTER TABLE aluno MODIFY tipo_curso VARCHAR2(15) ;
 
 --f)
-ALTER TABLE exemplar MODIFY vl_multa_diaria DEFAULT 0.0;
-ALTER TABLE emprestimo MODIFY vl_total_multa DEFAULT 0.0;
-ALTER TABLE itens_emprestimo MODIFY vl_multa_item DEFAULT 0.0;
-ALTER TABLE reserva MODIFY dt_hora_reserva DEFAULT current_timestamp;
+ALTER TABLE reserva MODIFY dt_reserva DEFAULT current_date ;
+ALTER TABLE exemplar MODIFY prazo_entrega DEFAULT 7 ;
 
 /***********************************************
         Alterando a estrutura das tabelas
@@ -233,3 +235,83 @@ DROP SEQUENCE seq_emprest;
 CREATE SEQUENCE seq_emprest
 START WITH 18000 INCREMENT BY 1
 MINVALUE 18000;
+
+
+-- 13/03: Populando as tabelas
+INSERT INTO usuario VALUES(1, 'Jose de Arimateia', 'Rua de Baixo, 10', '10/10/1980', 'M', 123, '123X', '11987654321', 'ze_mateia@uol.com.br', 'ATIVO', 'PROFESSOR');
+
+INSERT INTO usuario VALUES(2, 'Maria Imaculada da Conceicao', 'Rua de Cima, 20', '12/12/1995', 'F', 456, '456X', '11987651234', 'imaculada@gmail.com', 'ATIVO', 'ALUNO');
+
+--Alterando email e cpf do usuário cujo código é o de número 2
+UPDATE usuario SET email = 'maria_conceicao@gmail.com', cpf = 987654321
+WHERE cod_usuario = 2;
+
+-- professor
+INSERT INTO professor VALUES(1, 223344, '01/02/2010');
+
+-- obra
+INSERT INTO obra VALUES(9788580555332, 'Engenharia de Software', 'Software Engineering', 'Ingles', 'Computacao', 'Livro Tecnico', 10, 'ATIVO', 'Desenvolvimento software');
+
+INSERT INTO obra VALUES(9788576052371, 'Sistemas Operacionais Modernos', 'Modern Operational Systems', 'Ingles', 'Computacao', 'Livro Tecnico', 10, 'ATIVO', 'sistemas operacionais');
+
+-- Editora
+INSERT INTO editora VALUES(100, 'Prentice Hall', 8877, 'Estados Unidos', 'vendas@phall.com', 'ATIVO');
+
+INSERT INTO editora(sit_edit, cod_edit, contato, nome_edit, nacional_edit, cnpj_edit) VALUES('ATIVO', 101, 'comercial@globo.com.br', 'Editora Globo', 'Brasil',2255);
+
+
+-- Exemplar
+INSERT INTO exemplar VALUES(9788580555332, 1, 2014, 8, 1, 765, 'BROCHURA', 543, '28x22x5', 'Portugues', 199.99, '15/03/2016', 'COMPRA', DEFAULT, 2.5, 'ATIVO', 100);
+
+INSERT INTO exemplar VALUES(9788580555332, 1, 2014, 8, 1, 765, 'BROCHURA', 543, '28x22x5', 'Portugues', 0.0, '15/12/2016', 'DOACAO', DEFAULT, 2.5, 'ATIVO', 100);
+
+INSERT INTO exemplar VALUES(9788576052371, 1, 2015, 11, 1, 890, 'BROCHURA', 750, '28x22x7', 'Portugues', 231.99, '15/03/2016', 'COMPRA', DEFAULT, 2.5, 'ATIVO', 101);
+
+-- Emprestimo
+ALTER TABLE emprestimo MODIFY dt_hora_retirada DEFAULT current_timestamp;
+--ALTER TABLE emprestimo MODIFY vl_total_multa DEFAULT 0.0;
+INSERT INTO emprestimo(seq_emprest.nextval, DEFAULT, DEFAULT, 'EM ANDAMENTO', 1);
+
+
+--Itens emprestimo
+INSERT INTO itens_emprestimo VALUES(18000, 9788580555332, 2, current_date + 7, null, 0.0, 'EM ANDAMENTO');
+
+INSERT INTO itens_emprestimo VALUES(1800, 9788576052371, 1, current_date + 7, null, 0.0, 'AGUARDANDO');
+
+/* CAI NA PROVA VELHO ANOTA ISSO
+Tabela auxiliar para nacionalidade, transformando a entrada em textoda coluna nacionalidade em editora para uma tabela auxiliar, relacionando a partir de um único código */
+
+--Criando a nova tabela de nacionalidade
+DROP TABLE nacionalidade CASCADE CONSTRAINTS PURGE
+CREATE TABLE nacionalidade (
+    cod_pais SMALLINT PRIMARY KEY,
+    nome_pais VARCHAR2(30) NOT NULL
+);
+
+INSERT INTO nacionalidade VALUES(1, 'BRASIL');
+INSERT INTO nacionalidade VALUES(2, 'ESTADOS UNIDOS');
+INSERT INTO nacionalidade VALUES(3, 'ALEMANHA');
+INSERT INTO nacionalidade VALUES(4, 'INGLATERRA');
+
+--Adicionando nova coluna em editora que vai receber o código do país
+ALTER TABLE editar ADD cod_pais_edit SMALLINT;
+
+
+--Atualizando a nova coluna com o código que vem da tabela nacionalidade
+-- RTRIM = remover todos os espaços à direita
+UPDATE editora e SET e.cod_pais edit = (
+    SELECT n.cod_pais FROM nacionalidade n 
+    WHERE RTRIM(UPPER(n.nome_pais)) LIKE '%'||RTRIM(UPPER(e.nacional_edit))||'%'
+);
+
+--Nova coluna em editora virando chave estrangeira
+ALTER TABLE editora ADD FOREIGN KEY (cod_pais_edit) REFERENCES nacionalidade(cod_pais);
+
+ALTER TABLE editora MODIFY cod_pais_edit NOT NULL;
+
+--Excluindo a coluna que continha a nacionalidade como texto
+ALTER TABLE editora DROP COLUMN nacional_edit;
+
+/*********************************************************************
+            Atividade 2
+*********************************************************************/
